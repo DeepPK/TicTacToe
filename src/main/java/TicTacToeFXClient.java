@@ -9,8 +9,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
@@ -26,7 +24,6 @@ public class TicTacToeFXClient extends Application {
     private String currentGameId;
     private String playerSymbol;
 
-    // UI Components
     private Stage primaryStage;
     private TextField nameField;
     private ListView<String> roomsList;
