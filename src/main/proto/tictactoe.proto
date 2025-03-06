@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.example.tictactoe";
+option java_outer_classname = "TicTacToeProto";
+
+service TicTacToe {
+  rpc CreateRoom(RoomRequest) returns (RoomResponse);
+  rpc ListRooms(Empty) returns (RoomList);
+  rpc JoinRoom(RoomRequest) returns (stream GameState);
+  rpc MakeMove(Move) returns (MoveResult);
+}
+
+message RoomRequest {
+  string room_name = 1;
+  string player_name = 2;
+}
+
+message RoomResponse {
+  bool success = 1;
+  string message = 2;
+  string room_id = 3;
+}
+
+message RoomList {
+  repeated RoomInfo rooms = 1;
+}
+
+message RoomInfo {
+  string room_id = 1;
+  string room_name = 2;
+  int32 players_count = 3;
+  string status = 4;
+}
+
+message GameState {
+  string game_id = 1;
+  repeated string board = 2;
+  string current_player = 3;
+  string status = 4;
+}
+
+message Move {
+  string game_id = 1;
+  string player_name = 2;
+  int32 position = 3;
+}
+
+message MoveResult {
+  bool success = 1;
+  string message = 2;
+}
+
+message Empty {}
