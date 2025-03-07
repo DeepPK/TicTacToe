@@ -4,67 +4,65 @@ option java_multiple_files = true;
 option java_package = "com.example.tictactoe";
 option java_outer_classname = "TicTacToeProto";
 
-// Основной сервис для игры
 service TicTacToe {
-  // Создание новой комнаты
-  rpc CreateRoom(RoomRequest) returns (RoomResponse);
-
-  // Получение списка доступных комнат
+  rpc CreateRoom(CreateRoomRequest) returns (RoomResponse);
   rpc ListRooms(Empty) returns (RoomList);
-
-  // Подключение к комнате (возвращает поток состояний игры)
-  rpc JoinRoom(RoomRequest) returns (stream GameState);
-
-  // Совершение хода
+  rpc JoinRoom(JoinRoomRequest) returns (stream GameState);
   rpc MakeMove(Move) returns (MoveResult);
+  rpc LeaveRoom(LeaveRequest) returns (Empty);
 }
 
-// Запрос для создания/подключения к комнате
-message RoomRequest {
-  string room_name = 1;    // Название комнаты
-  string player_name = 2;  // Имя игрока
+message CreateRoomRequest {
+  string room_name = 1;
 }
 
-// Ответ при создании комнаты
+message JoinRoomRequest {
+  string room_id = 1;
+  string player_name = 2;
+}
+
 message RoomResponse {
-  bool success = 1;    // Успешность операции
-  string message = 2;  // Сообщение об ошибке
-  string room_id = 3;  // Уникальный ID комнаты
+  bool success = 1;
+  string message = 2;
+  string room_id = 3;
 }
 
-// Список комнат
 message RoomList {
-  repeated RoomInfo rooms = 1; // Массив доступных комнат
+  repeated RoomInfo rooms = 1;
 }
 
-// Информация о комнате
 message RoomInfo {
-  string room_id = 1;        // ID комнаты
-  string room_name = 2;      // Название комнаты
-  int32 players_count = 3;   // Количество игроков
-  string status = 4;         // Статус (WAITING, IN_PROGRESS и т.д.)
+  string room_id = 1;
+  string room_name = 2;
+  int32 players_count = 3;
+  string status = 4;
 }
 
-// Состояние игры
 message GameState {
-  string game_id = 1;            // ID игры
-  repeated string board = 2;     // Игровое поле (9 элементов)
-  string current_player = 3;     // Текущий игрок
-  string status = 4;             // Статус игры
+  string game_id = 1;
+  repeated string board = 2;
+  string current_player = 3;
+  string status = 4;
+  string player_symbol = 5;
+  bool connection_alive = 6;
+  int32 players_count = 7;
+  int32 room_version = 8;
 }
 
-// Ход игрока
 message Move {
-  string game_id = 1;      // ID игры
-  string player_name = 2;  // Имя игрока
-  int32 position = 3;      // Позиция на поле (0-8)
+  string game_id = 1;
+  string player_name = 2;
+  int32 position = 3;
 }
 
-// Результат хода
 message MoveResult {
-  bool success = 1;    // Успешность хода
-  string message = 2;  // Сообщение об ошибке
+  bool success = 1;
+  string message = 2;
 }
 
-// Пустой запрос
+message LeaveRequest {
+  string room_id = 1;
+  string player_name = 2;
+}
+
 message Empty {}
