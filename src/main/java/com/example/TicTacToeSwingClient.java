@@ -320,74 +320,60 @@ public class TicTacToeSwingClient extends JFrame {
         @Override
         public void onNext(GameState state) {
             SwingUtilities.invokeLater(() -> {
-                // Полный сброс интерфейса при новом подключении
-                if (state.getStatus().equals("WAITING") && state.getPlayersCount() == 1) {
-                    resetGameUI();
-                }
-
-                // Обновление поля только если игра активна
-                if (state.getStatus().equals("IN_PROGRESS") ||
-                        state.getStatus().endsWith("_WON") ||
-                        state.getStatus().equals("DRAW")) {
-                    updateBoard(state.getBoardList());
-                }
-
-                lastKnownStatus = state.getStatus();
-
-                // Обновление информации о количестве игроков
-                if (state.getPlayersCount() == 1) {
-                    statusLabel.setText("Ожидание второго игрока (1/2)");
-                    statusLabel.setForeground(Color.DARK_GRAY);
-                } else if (state.getPlayersCount() == 2) {
-                    statusLabel.setText("Игра началась!");
-                    statusLabel.setForeground(Color.DARK_GRAY);
-                }
-
-                // Обновление символа игрока
-                if (playerSymbol == null && !state.getPlayerSymbol().isEmpty()) {
-                    playerSymbol = state.getPlayerSymbol();
-                    playerSymbolLabel.setText("Ваш символ: " + playerSymbol);
-                    playerSymbolLabel.setForeground(
-                            playerSymbol.equals("X") ? new Color(0, 100, 255) : new Color(255, 50, 50)
-                    );
-                }
-
-                // Обработка статусов игры
-                switch (state.getStatus()) {
-                    case "IN_PROGRESS":
-                        statusLabel.setText("Сейчас ходит: " + state.getCurrentPlayer());
-                        statusLabel.setForeground(Color.DARK_GRAY);
-                        break;
-                    case "X_WON":
-                    case "O_WON":
-                        String winner = state.getStatus().substring(0, 1);
-                        statusLabel.setText("Победил " + winner + "!");
-                        statusLabel.setForeground(new Color(0, 150, 0));
-                        break;
-                    case "DRAW":
-                        statusLabel.setText("Ничья!");
-                        statusLabel.setForeground(Color.ORANGE);
-                        break;
-                    case "ABANDONED":
-                        statusLabel.setText("Соперник вышел из игры");
-                        statusLabel.setForeground(Color.RED);
-                        break;
-                }
-
-                // Обновление игрового поля
+                handleGameStatus(state);
                 updateBoard(state.getBoardList());
-
-                // Управление активностью кнопок
-                boolean gameActive = "IN_PROGRESS".equals(state.getStatus());
-                boolean myTurn = state.getCurrentPlayer().equals(playerSymbol);
-
-                for (JButton[] row : gridButtons) {
-                    for (JButton btn : row) {
-                        boolean cellEmpty = btn.getText().isEmpty();
-                        btn.setEnabled(gameActive && myTurn && cellEmpty);
-                    }
-                }
+                updateUIState(state);
             });
+        }
+
+        private void handleGameStatus(GameState state) {
+            String statusMessage = state.getStatus();
+
+            if (statusMessage.contains("Победил")) {
+                JOptionPane.showMessageDialog(
+                        TicTacToeSwingClient.this,
+                        statusMessage,
+                        "Игра завершена",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            }
+            else if (statusMessage.equals("Ничья!")) {
+                JOptionPane.showMessageDialog(
+                        TicTacToeSwingClient.this,
+                        "Ничья! Игра завершена",
+                        "Игра завершена",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            }
+            else if (statusMessage.equals("Соперник вышел из игры")) {
+                int choice = JOptionPane.showConfirmDialog(
+                        TicTacToeSwingClient.this,
+                        "Соперник вышел из игры. Хотите вернуться в лобби?",
+                        "Игра прервана",
+                        JOptionPane.YES_NO_OPTION
+                );
+
+                if (choice == JOptionPane.YES_OPTION) {
+                    leaveGame();
+                }
+            }
+        }
+
+        private void updateUIState(GameState state) {
+            statusLabel.setText(state.getStatus());
+
+            if (state.getStatus().startsWith("Ход:")) {
+                statusLabel.setForeground(new Color(30, 30, 30));
+            } else {
+                statusLabel.setForeground(new Color(200, 0, 0));
+            }
+
+            boolean myTurn = state.getCurrentPlayer().equals(playerSymbol);
+            for (JButton[] row : gridButtons) {
+                for (JButton btn : row) {
+                    btn.setEnabled(myTurn && btn.getText().isEmpty());
+                }
+            }
         }
 
         private void resetGameUI() {
