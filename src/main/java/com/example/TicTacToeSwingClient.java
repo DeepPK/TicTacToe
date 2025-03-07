@@ -4,6 +4,8 @@ import com.example.tictactoe.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.swing.*;
 import java.awt.*;
 import java.util.Arrays;
@@ -11,14 +13,15 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TicTacToeSwingClient extends JFrame {
+    private static final Logger logger = LoggerFactory.getLogger(TicTacToeSwingClient.class);
     private ManagedChannel channel;
     private TicTacToeGrpc.TicTacToeBlockingStub blockingStub;
     private TicTacToeGrpc.TicTacToeStub asyncStub;
     private String playerName;
     private String currentGameId;
     private String playerSymbol;
-    private String lastKnownStatus = "WAITING";
 
+    // GUI Components
     private JPanel mainPanel;
     private CardLayout cardLayout;
     private DefaultListModel<RoomInfoWrapper> listModel;
@@ -71,7 +74,7 @@ public class TicTacToeSwingClient extends JFrame {
     }
 
     private void setupGUI() {
-        setTitle("Tic Tac Toe");
+        setTitle("Крестики-Нолики");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 400);
         cardLayout = new CardLayout();
@@ -90,7 +93,7 @@ public class TicTacToeSwingClient extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JTextField nameField = new JTextField();
-        JButton loginButton = new JButton("Login");
+        JButton loginButton = new JButton("Войти");
 
         loginButton.addActionListener(e -> {
             playerName = nameField.getText();
@@ -100,7 +103,7 @@ public class TicTacToeSwingClient extends JFrame {
             }
         });
 
-        panel.add(new JLabel("Enter your name:"));
+        panel.add(new JLabel("Введите ваше имя:"));
         panel.add(nameField);
         panel.add(loginButton);
 
@@ -114,9 +117,9 @@ public class TicTacToeSwingClient extends JFrame {
         listModel = new DefaultListModel<>();
         roomsList = new JList<>(listModel);
 
-        JButton createButton = new JButton("Create Room");
-        JButton refreshButton = new JButton("Refresh Rooms");
-        JButton joinButton = new JButton("Join Room");
+        JButton createButton = new JButton("Создать комнату");
+        JButton refreshButton = new JButton("Обновить список");
+        JButton joinButton = new JButton("Присоединиться");
 
         createButton.addActionListener(e -> createRoom());
         refreshButton.addActionListener(e -> refreshRooms());
@@ -159,15 +162,15 @@ public class TicTacToeSwingClient extends JFrame {
         playerSymbolLabel = new JLabel("Ваш символ: ");
         infoPanel.add(playerSymbolLabel);
 
-        JButton exitButton = new JButton("Покинуть игру");
+        JButton exitButton = new JButton("Выйти из игры");
         exitButton.addActionListener(e -> leaveGame());
-        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        controlPanel.add(exitButton);
+        JPanel controlPanel = new JPanel(new BorderLayout());
+        controlPanel.add(infoPanel, BorderLayout.NORTH);
+        controlPanel.add(exitButton, BorderLayout.SOUTH);
 
-        panel.add(infoPanel, BorderLayout.NORTH);
+        panel.add(controlPanel, BorderLayout.NORTH);
         panel.add(gridPanel, BorderLayout.CENTER);
         panel.add(statusLabel, BorderLayout.SOUTH);
-        panel.add(controlPanel, BorderLayout.SOUTH);
 
         mainPanel.add(panel, "game");
     }
@@ -187,7 +190,6 @@ public class TicTacToeSwingClient extends JFrame {
                     currentGameId = response.getRoomId();
                     SwingUtilities.invokeLater(() -> {
                         cardLayout.show(mainPanel, "game");
-                        statusLabel.setText("Ожидание второго игрока...");
                         joinGame();
                     });
                 }
@@ -206,7 +208,6 @@ public class TicTacToeSwingClient extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     listModel.clear();
                     roomList.getRoomsList().forEach(room -> {
-                        // Фильтрация невалидных комнат на клиенте
                         if (room.getStatus().equals("WAITING") && room.getPlayersCount() == 1) {
                             listModel.addElement(new RoomInfoWrapper(room));
                         }
@@ -214,7 +215,8 @@ public class TicTacToeSwingClient extends JFrame {
                 });
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() ->
-                        JOptionPane.showMessageDialog(this, "Ошибка обновления: " + e.getMessage()));
+                        JOptionPane.showMessageDialog(this, "Ошибка обновления списка: " + e.getMessage())
+                );
             }
         }).start();
     }
@@ -227,6 +229,27 @@ public class TicTacToeSwingClient extends JFrame {
         }
         currentGameId = selected.getRoomId();
         joinGame();
+    }
+
+    private void joinGame() {
+        resetGameUI();
+        JoinRoomRequest joinRequest = JoinRoomRequest.newBuilder()
+                .setRoomId(currentGameId)
+                .setPlayerName(playerName)
+                .build();
+
+        asyncStub.joinRoom(joinRequest, new GameStateObserver());
+        cardLayout.show(mainPanel, "game");
+    }
+
+    private void resetGameUI() {
+        Arrays.stream(gridButtons).flatMap(Arrays::stream).forEach(btn -> {
+            btn.setText("");
+            btn.setEnabled(false);
+        });
+        statusLabel.setText("Подключение к игре...");
+        playerSymbolLabel.setText("Ваш символ: ");
+        playerSymbol = null;
     }
 
     private void makeMove(int position) {
@@ -245,28 +268,21 @@ public class TicTacToeSwingClient extends JFrame {
                         String errorMessage = switch (result.getMessage()) {
                             case "Invalid position" -> "Некорректная позиция!";
                             case "Cell is occupied" -> "Клетка занята!";
-                            case "Wrong turn" -> "Не ваш ход!";
+                            case "Wrong turn" -> "Сейчас не ваш ход!";
                             default -> "Ошибка хода!";
                         };
                         JOptionPane.showMessageDialog(
-                                TicTacToeSwingClient.this,
+                                this,
                                 errorMessage,
                                 "Ошибка",
                                 JOptionPane.WARNING_MESSAGE
                         );
-                    } else {
-                        // После успешного хода обновляем состояние кнопок
-                        for (JButton[] row : gridButtons) {
-                            for (JButton btn : row) {
-                                btn.setEnabled(false);
-                            }
-                        }
                     }
                 });
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() ->
                         JOptionPane.showMessageDialog(
-                                TicTacToeSwingClient.this,
+                                this,
                                 "Ошибка соединения: " + e.getMessage(),
                                 "Ошибка",
                                 JOptionPane.ERROR_MESSAGE
@@ -293,102 +309,64 @@ public class TicTacToeSwingClient extends JFrame {
             refreshRooms();
         }
     }
-    private void joinGame() {
-        // Сброс предыдущего состояния перед подключением
-        resetGameUI();
-
-        JoinRoomRequest joinRequest = JoinRoomRequest.newBuilder()
-                .setRoomId(currentGameId)
-                .setPlayerName(playerName)
-                .build();
-
-        asyncStub.joinRoom(joinRequest, new GameStateObserver());
-        cardLayout.show(mainPanel, "game");
-    }
-
-    private void resetGameUI() {
-        Arrays.stream(gridButtons).flatMap(Arrays::stream).forEach(btn -> {
-            btn.setText("");
-            btn.setEnabled(false);
-        });
-        statusLabel.setText(" ");
-        playerSymbolLabel.setText("Ваш символ: ");
-        playerSymbol = null;
-    }
 
     private class GameStateObserver implements StreamObserver<GameState> {
         @Override
         public void onNext(GameState state) {
             SwingUtilities.invokeLater(() -> {
-                handleGameStatus(state);
+                handleStatusUpdate(state);
                 updateBoard(state.getBoardList());
-                updateUIState(state);
+                updateUI(state);
             });
         }
 
-        private void handleGameStatus(GameState state) {
-            String statusMessage = state.getStatus();
+        private void handleStatusUpdate(GameState state) {
+            String status = state.getStatus();
 
-            if (statusMessage.contains("Победил")) {
+            // Обновление символа игрока
+            if (playerSymbol == null && !state.getPlayerSymbol().isEmpty()) {
+                playerSymbol = state.getPlayerSymbol();
+                playerSymbolLabel.setText("Ваш символ: " + playerSymbol);
+                playerSymbolLabel.setForeground(
+                        playerSymbol.equals("X") ? new Color(0, 100, 255) : new Color(255, 50, 50)
+                );
+            }
+
+            // Обработка специальных статусов
+            if (status.contains("Победил") || status.equals("Ничья!")) {
                 JOptionPane.showMessageDialog(
                         TicTacToeSwingClient.this,
-                        statusMessage,
+                        status,
                         "Игра завершена",
                         JOptionPane.INFORMATION_MESSAGE
                 );
-            }
-            else if (statusMessage.equals("Ничья!")) {
-                JOptionPane.showMessageDialog(
-                        TicTacToeSwingClient.this,
-                        "Ничья! Игра завершена",
-                        "Игра завершена",
-                        JOptionPane.INFORMATION_MESSAGE
-                );
-            }
-            else if (statusMessage.equals("Соперник вышел из игры")) {
+            } else if (status.equals("Соперник покинул игру")) {
                 int choice = JOptionPane.showConfirmDialog(
                         TicTacToeSwingClient.this,
-                        "Соперник вышел из игры. Хотите вернуться в лобби?",
+                        "Соперник вышел. Вернуться в лобби?",
                         "Игра прервана",
                         JOptionPane.YES_NO_OPTION
                 );
-
-                if (choice == JOptionPane.YES_OPTION) {
-                    leaveGame();
-                }
+                if (choice == JOptionPane.YES_OPTION) leaveGame();
             }
+
+            statusLabel.setText(status);
+            statusLabel.setForeground(getStatusColor(status));
         }
 
-        private void updateUIState(GameState state) {
-            statusLabel.setText(state.getStatus());
-
-            if (state.getStatus().startsWith("Ход:")) {
-                statusLabel.setForeground(new Color(30, 30, 30));
-            } else {
-                statusLabel.setForeground(new Color(200, 0, 0));
-            }
-
-            boolean myTurn = state.getCurrentPlayer().equals(playerSymbol);
-            for (JButton[] row : gridButtons) {
-                for (JButton btn : row) {
-                    btn.setEnabled(myTurn && btn.getText().isEmpty());
-                }
-            }
-        }
-
-        private void resetGameUI() {
-            for (JButton[] row : gridButtons) {
-                for (JButton btn : row) {
-                    btn.setText("");
-                    btn.setEnabled(false);
-                }
-            }
-            statusLabel.setText("Ожидание второго игрока...");
-            playerSymbolLabel.setText("Ваш символ: ");
-            playerSymbol = null;
+        private Color getStatusColor(String status) {
+            if (status.contains("Победил")) return new Color(0, 150, 0);
+            if (status.equals("Ничья!")) return Color.ORANGE;
+            if (status.equals("Соперник покинул игру")) return Color.RED;
+            return Color.DARK_GRAY;
         }
 
         private void updateBoard(List<String> board) {
+            if (board.size() != 9) {
+                logger.error("Некорректный размер поля: {}", board.size());
+                return;
+            }
+
             for (int i = 0; i < 9; i++) {
                 int row = i / 3;
                 int col = i % 3;
@@ -397,22 +375,33 @@ public class TicTacToeSwingClient extends JFrame {
 
                 btn.setText(symbol.isEmpty() ? "" : symbol);
                 btn.setForeground(
-                        symbol.equals("X") ? new Color(0, 100, 255) : new Color(255, 50, 50)
+                        symbol.equals("X") ?
+                                new Color(0, 100, 255) :
+                                new Color(255, 50, 50)
                 );
+            }
+        }
+
+        private void updateUI(GameState state) {
+            boolean isMyTurn = state.getCurrentPlayer().equals(playerSymbol);
+            boolean isGameActive = state.getStatus().startsWith("Сейчас ходит:");
+
+            for (JButton[] row : gridButtons) {
+                for (JButton btn : row) {
+                    btn.setEnabled(isGameActive && isMyTurn && btn.getText().isEmpty());
+                }
             }
         }
 
         @Override
         public void onError(Throwable t) {
             SwingUtilities.invokeLater(() -> {
-                if (!"WAITING".equals(lastKnownStatus)) {
-                    JOptionPane.showMessageDialog(
-                            TicTacToeSwingClient.this,
-                            "Соединение потеряно: " + t.getMessage(),
-                            "Ошибка",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                }
+                JOptionPane.showMessageDialog(
+                        TicTacToeSwingClient.this,
+                        "Ошибка соединения: " + t.getMessage(),
+                        "Ошибка",
+                        JOptionPane.ERROR_MESSAGE
+                );
                 cardLayout.show(mainPanel, "main");
             });
         }
