@@ -4,51 +4,67 @@ option java_multiple_files = true;
 option java_package = "com.example.tictactoe";
 option java_outer_classname = "TicTacToeProto";
 
+// Основной сервис для игры
 service TicTacToe {
+  // Создание новой комнаты
   rpc CreateRoom(RoomRequest) returns (RoomResponse);
+
+  // Получение списка доступных комнат
   rpc ListRooms(Empty) returns (RoomList);
+
+  // Подключение к комнате (возвращает поток состояний игры)
   rpc JoinRoom(RoomRequest) returns (stream GameState);
+
+  // Совершение хода
   rpc MakeMove(Move) returns (MoveResult);
 }
 
+// Запрос для создания/подключения к комнате
 message RoomRequest {
-  string room_name = 1;
-  string player_name = 2;
+  string room_name = 1;    // Название комнаты
+  string player_name = 2;  // Имя игрока
 }
 
+// Ответ при создании комнаты
 message RoomResponse {
-  bool success = 1;
-  string message = 2;
-  string room_id = 3;
+  bool success = 1;    // Успешность операции
+  string message = 2;  // Сообщение об ошибке
+  string room_id = 3;  // Уникальный ID комнаты
 }
 
+// Список комнат
 message RoomList {
-  repeated RoomInfo rooms = 1;
+  repeated RoomInfo rooms = 1; // Массив доступных комнат
 }
 
+// Информация о комнате
 message RoomInfo {
-  string room_id = 1;
-  string room_name = 2;
-  int32 players_count = 3;
-  string status = 4;
+  string room_id = 1;        // ID комнаты
+  string room_name = 2;      // Название комнаты
+  int32 players_count = 3;   // Количество игроков
+  string status = 4;         // Статус (WAITING, IN_PROGRESS и т.д.)
 }
 
+// Состояние игры
 message GameState {
-  string game_id = 1;
-  repeated string board = 2;
-  string current_player = 3;
-  string status = 4;
+  string game_id = 1;            // ID игры
+  repeated string board = 2;     // Игровое поле (9 элементов)
+  string current_player = 3;     // Текущий игрок
+  string status = 4;             // Статус игры
 }
 
+// Ход игрока
 message Move {
-  string game_id = 1;
-  string player_name = 2;
-  int32 position = 3;
+  string game_id = 1;      // ID игры
+  string player_name = 2;  // Имя игрока
+  int32 position = 3;      // Позиция на поле (0-8)
 }
 
+// Результат хода
 message MoveResult {
-  bool success = 1;
-  string message = 2;
+  bool success = 1;    // Успешность хода
+  string message = 2;  // Сообщение об ошибке
 }
 
+// Пустой запрос
 message Empty {}

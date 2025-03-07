@@ -1,5 +1,5 @@
 <archetype>
-  <id>TicTacToeServer</id>
+  <id>com.example.TicTacToeServer</id>
   <sources>
     <source>src/main/java/App.java</source>
   </sources>

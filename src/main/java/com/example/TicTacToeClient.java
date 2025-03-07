@@ -1,4 +1,5 @@
-import com.example.tictactoe.*;
+package com.example;
+
 import com.example.tictactoe.TicTacToeGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -54,7 +55,7 @@ public class TicTacToeClient {
         System.out.print("Enter room name: ");
         String roomName = scanner.nextLine();
 
-        RoomResponse response = blockingStub.createRoom(RoomRequest.newBuilder()
+        com.example.tictactoe.RoomResponse response = blockingStub.createRoom(com.example.tictactoe.RoomRequest.newBuilder()
                 .setRoomName(roomName)
                 .setPlayerName(playerName)
                 .build());
@@ -69,7 +70,7 @@ public class TicTacToeClient {
     }
 
     private void listRooms() {
-        RoomList roomList = blockingStub.listRooms(Empty.getDefaultInstance());
+        com.example.tictactoe.RoomList roomList = blockingStub.listRooms(com.example.tictactoe.Empty.getDefaultInstance());
         System.out.println("\nAvailable rooms:");
         roomList.getRoomsList().forEach(room ->
                 System.out.printf("[%s] %s - Players: %d/2%n",
@@ -82,7 +83,7 @@ public class TicTacToeClient {
         System.out.print("Enter room ID: ");
         currentGameId = scanner.nextLine();
 
-        asyncStub.joinRoom(RoomRequest.newBuilder()
+        asyncStub.joinRoom(com.example.tictactoe.RoomRequest.newBuilder()
                 .setRoomName(currentGameId)
                 .setPlayerName(playerName)
                 .build(), new GameStateObserver());
@@ -91,7 +92,7 @@ public class TicTacToeClient {
     }
 
     private void waitForGameStart() {
-        asyncStub.joinRoom(RoomRequest.newBuilder()
+        asyncStub.joinRoom(com.example.tictactoe.RoomRequest.newBuilder()
                 .setRoomName(currentGameId)
                 .setPlayerName(playerName)
                 .build(), new GameStateObserver());
@@ -101,9 +102,9 @@ public class TicTacToeClient {
         channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
     }
 
-    private class GameStateObserver implements StreamObserver<GameState> {
+    private class GameStateObserver implements StreamObserver<com.example.tictactoe.GameState> {
         @Override
-        public void onNext(GameState state) {
+        public void onNext(com.example.tictactoe.GameState state) {
             System.out.println("\n=== Game Update ===");
             System.out.println("Status: " + state.getStatus());
             printBoard(state.getBoardList());
@@ -150,7 +151,7 @@ public class TicTacToeClient {
 
                 try {
                     int position = Integer.parseInt(input) - 1;
-                    MoveResult result = blockingStub.makeMove(Move.newBuilder()
+                    com.example.tictactoe.MoveResult result = blockingStub.makeMove(com.example.tictactoe.Move.newBuilder()
                             .setGameId(currentGameId)
                             .setPlayerName(playerName)
                             .setPosition(position)
