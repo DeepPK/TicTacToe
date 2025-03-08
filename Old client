@@ -2,7 +2,7 @@ Old client
 
 //package com.example;
 //
-//import com.example.tictactoe.TicTacToeGrpc;
+//import java.com.example.tictactoe.TicTacToeGrpc;
 //import io.grpc.ManagedChannel;
 //import io.grpc.ManagedChannelBuilder;
 //import io.grpc.stub.StreamObserver;

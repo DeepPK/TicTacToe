@@ -1,6 +1,5 @@
 package com.example;
 
-import com.example.tictactoe.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
@@ -15,8 +14,8 @@ import java.util.concurrent.TimeUnit;
 public class TicTacToeSwingClient extends JFrame {
     private static final Logger logger = LoggerFactory.getLogger(TicTacToeSwingClient.class);
     private ManagedChannel channel;
-    private TicTacToeGrpc.TicTacToeBlockingStub blockingStub;
-    private TicTacToeGrpc.TicTacToeStub asyncStub;
+    private com.example.tictactoe.TicTacToeGrpc.TicTacToeBlockingStub blockingStub;
+    private com.example.tictactoe.TicTacToeGrpc.TicTacToeStub asyncStub;
     private String playerName;
     private String currentGameId;
     private String playerSymbol;
@@ -31,9 +30,9 @@ public class TicTacToeSwingClient extends JFrame {
     private JLabel playerSymbolLabel;
 
     private static class RoomInfoWrapper {
-        private final RoomInfo info;
+        private final com.example.tictactoe.RoomInfo info;
 
-        public RoomInfoWrapper(RoomInfo info) {
+        public RoomInfoWrapper(com.example.tictactoe.RoomInfo info) {
             this.info = info;
         }
 
@@ -69,8 +68,8 @@ public class TicTacToeSwingClient extends JFrame {
         channel = ManagedChannelBuilder.forAddress("localhost", 50051)
                 .usePlaintext()
                 .build();
-        blockingStub = TicTacToeGrpc.newBlockingStub(channel);
-        asyncStub = TicTacToeGrpc.newStub(channel);
+        blockingStub = com.example.tictactoe.TicTacToeGrpc.newBlockingStub(channel);
+        asyncStub = com.example.tictactoe.TicTacToeGrpc.newStub(channel);
     }
 
     private void setupGUI() {
@@ -181,8 +180,8 @@ public class TicTacToeSwingClient extends JFrame {
 
         new Thread(() -> {
             try {
-                RoomResponse response = blockingStub.createRoom(
-                        CreateRoomRequest.newBuilder()
+                com.example.tictactoe.RoomResponse response = blockingStub.createRoom(
+                        com.example.tictactoe.CreateRoomRequest.newBuilder()
                                 .setRoomName(roomName)
                                 .build());
 
@@ -204,7 +203,7 @@ public class TicTacToeSwingClient extends JFrame {
     private void refreshRooms() {
         new Thread(() -> {
             try {
-                RoomList roomList = blockingStub.listRooms(Empty.getDefaultInstance());
+                com.example.tictactoe.RoomList roomList = blockingStub.listRooms(com.example.tictactoe.Empty.getDefaultInstance());
                 SwingUtilities.invokeLater(() -> {
                     listModel.clear();
                     roomList.getRoomsList().forEach(room -> {
@@ -233,7 +232,7 @@ public class TicTacToeSwingClient extends JFrame {
 
     private void joinGame() {
         resetGameUI();
-        JoinRoomRequest joinRequest = JoinRoomRequest.newBuilder()
+        com.example.tictactoe.JoinRoomRequest joinRequest = com.example.tictactoe.JoinRoomRequest.newBuilder()
                 .setRoomId(currentGameId)
                 .setPlayerName(playerName)
                 .build();
@@ -257,7 +256,7 @@ public class TicTacToeSwingClient extends JFrame {
 
         new Thread(() -> {
             try {
-                MoveResult result = blockingStub.makeMove(Move.newBuilder()
+                com.example.tictactoe.MoveResult result = blockingStub.makeMove(com.example.tictactoe.Move.newBuilder()
                         .setGameId(currentGameId)
                         .setPlayerName(playerName)
                         .setPosition(position)
@@ -301,7 +300,7 @@ public class TicTacToeSwingClient extends JFrame {
         );
 
         if (choice == JOptionPane.YES_OPTION) {
-            blockingStub.leaveRoom(LeaveRequest.newBuilder()
+            blockingStub.leaveRoom(com.example.tictactoe.LeaveRequest.newBuilder()
                     .setRoomId(currentGameId)
                     .setPlayerName(playerName)
                     .build());
@@ -310,9 +309,9 @@ public class TicTacToeSwingClient extends JFrame {
         }
     }
 
-    private class GameStateObserver implements StreamObserver<GameState> {
+    private class GameStateObserver implements StreamObserver<com.example.tictactoe.GameState> {
         @Override
-        public void onNext(GameState state) {
+        public void onNext(com.example.tictactoe.GameState state) {
             SwingUtilities.invokeLater(() -> {
                 handleStatusUpdate(state);
                 updateBoard(state.getBoardList());
@@ -320,7 +319,7 @@ public class TicTacToeSwingClient extends JFrame {
             });
         }
 
-        private void handleStatusUpdate(GameState state) {
+        private void handleStatusUpdate(com.example.tictactoe.GameState state) {
             String status = state.getStatus();
 
             // Обновление символа игрока
@@ -382,7 +381,7 @@ public class TicTacToeSwingClient extends JFrame {
             }
         }
 
-        private void updateUI(GameState state) {
+        private void updateUI(com.example.tictactoe.GameState state) {
             boolean isMyTurn = state.getCurrentPlayer().equals(playerSymbol);
             boolean isGameActive = state.getStatus().startsWith("Сейчас ходит:");
 

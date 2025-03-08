@@ -1,6 +1,5 @@
 package com.example;
 
-import com.example.tictactoe.*;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
@@ -62,7 +61,7 @@ public class TicTacToeServer {
         server.blockUntilShutdown();
     }
 
-    static class TicTacToeService extends TicTacToeGrpc.TicTacToeImplBase {
+    static class TicTacToeService extends com.example.tictactoe.TicTacToeGrpc.TicTacToeImplBase {
         private final RoomManager roomManager;
 
         public TicTacToeService(RoomManager roomManager) {
@@ -70,9 +69,9 @@ public class TicTacToeServer {
         }
 
         @Override
-        public void createRoom(CreateRoomRequest request, StreamObserver<RoomResponse> responseObserver) {
+        public void createRoom(com.example.tictactoe.CreateRoomRequest request, StreamObserver<com.example.tictactoe.RoomResponse> responseObserver) {
             try {
-                RoomResponse response = roomManager.createRoom(request.getRoomName());
+                com.example.tictactoe.RoomResponse response = roomManager.createRoom(request.getRoomName());
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
             } catch (Exception e) {
@@ -81,13 +80,13 @@ public class TicTacToeServer {
         }
 
         @Override
-        public void listRooms(Empty request, StreamObserver<RoomList> responseObserver) {
+        public void listRooms(com.example.tictactoe.Empty request, StreamObserver<com.example.tictactoe.RoomList> responseObserver) {
             responseObserver.onNext(roomManager.getRoomList());
             responseObserver.onCompleted();
         }
 
         @Override
-        public void joinRoom(JoinRoomRequest request, StreamObserver<GameState> responseObserver) {
+        public void joinRoom(com.example.tictactoe.JoinRoomRequest request, StreamObserver<com.example.tictactoe.GameState> responseObserver) {
             try {
                 roomManager.joinRoom(
                         request.getRoomId(),
@@ -99,13 +98,13 @@ public class TicTacToeServer {
         }
 
         @Override
-        public void makeMove(Move request, StreamObserver<MoveResult> responseObserver) {
+        public void makeMove(com.example.tictactoe.Move request, StreamObserver<com.example.tictactoe.MoveResult> responseObserver) {
             try {
                 boolean success = roomManager.handleMove(
                         request.getGameId(),
                         request.getPlayerName(),
                         request.getPosition());
-                responseObserver.onNext(MoveResult.newBuilder()
+                responseObserver.onNext(com.example.tictactoe.MoveResult.newBuilder()
                         .setSuccess(success)
                         .setMessage(success ? "Ход принят" : "Некорректный ход")
                         .build());
@@ -116,9 +115,9 @@ public class TicTacToeServer {
         }
 
         @Override
-        public void leaveRoom(LeaveRequest request, StreamObserver<Empty> responseObserver) {
+        public void leaveRoom(com.example.tictactoe.LeaveRequest request, StreamObserver<com.example.tictactoe.Empty> responseObserver) {
             roomManager.handlePlayerExit(request.getRoomId(), request.getPlayerName());
-            responseObserver.onNext(Empty.getDefaultInstance());
+            responseObserver.onNext(com.example.tictactoe.Empty.getDefaultInstance());
             responseObserver.onCompleted();
         }
     }
@@ -127,20 +126,20 @@ public class TicTacToeServer {
         private final ConcurrentMap<String, Room> rooms = new ConcurrentHashMap<>();
         private final AtomicInteger roomCounter = new AtomicInteger();
 
-        public RoomResponse createRoom(String roomName) {
+        public com.example.tictactoe.RoomResponse createRoom(String roomName) {
             String roomId = "room-" + roomCounter.incrementAndGet();
             rooms.put(roomId, new Room(roomId, roomName));
-            return RoomResponse.newBuilder()
+            return com.example.tictactoe.RoomResponse.newBuilder()
                     .setSuccess(true)
                     .setRoomId(roomId)
                     .build();
         }
 
-        public RoomList getRoomList() {
-            RoomList.Builder builder = RoomList.newBuilder();
+        public com.example.tictactoe.RoomList getRoomList() {
+            com.example.tictactoe.RoomList.Builder builder = com.example.tictactoe.RoomList.newBuilder();
             rooms.forEach((id, room) -> {
                 if (room.getStatus().equals("WAITING") && room.getPlayersCount() == 1) {
-                    builder.addRooms(RoomInfo.newBuilder()
+                    builder.addRooms(com.example.tictactoe.RoomInfo.newBuilder()
                             .setRoomId(id)
                             .setRoomName(room.getRoomName())
                             .setPlayersCount(room.getPlayersCount())
@@ -151,7 +150,7 @@ public class TicTacToeServer {
             return builder.build();
         }
 
-        public void joinRoom(String roomId, String playerName, StreamObserver<GameState> observer) {
+        public void joinRoom(String roomId, String playerName, StreamObserver<com.example.tictactoe.GameState> observer) {
             Room room = rooms.get(roomId);
             if (room == null) {
                 observer.onError(Status.NOT_FOUND.withDescription("Комната не найдена").asRuntimeException());
@@ -192,7 +191,7 @@ public class TicTacToeServer {
             this.roomName = roomName;
         }
 
-        public synchronized void addPlayer(String name, StreamObserver<GameState> observer) {
+        public synchronized void addPlayer(String name, StreamObserver<com.example.tictactoe.GameState> observer) {
             if (players.size() >= 2 || !status.equals("WAITING")) {
                 observer.onError(Status.FAILED_PRECONDITION
                         .withDescription("Комната заполнена или игра уже началась")
@@ -204,7 +203,7 @@ public class TicTacToeServer {
             Player newPlayer = new Player(name, symbol, observer);
             players.add(newPlayer);
 
-            GameState initialState = GameState.newBuilder()
+            com.example.tictactoe.GameState initialState = com.example.tictactoe.GameState.newBuilder()
                     .setGameId(roomId)
                     .setStatus(getStatusMessage())
                     .setPlayersCount(players.size())
@@ -271,7 +270,7 @@ public class TicTacToeServer {
             List<String> board = getCurrentBoard();
 
             players.forEach(p -> {
-                GameState state = GameState.newBuilder()
+                com.example.tictactoe.GameState state = com.example.tictactoe.GameState.newBuilder()
                         .setGameId(roomId)
                         .addAllBoard(board)
                         .setCurrentPlayer(game != null ? game.getCurrentPlayer() : "")
@@ -306,7 +305,7 @@ public class TicTacToeServer {
             }
         }
 
-        private void safelyCloseObserver(StreamObserver<GameState> observer) {
+        private void safelyCloseObserver(StreamObserver<com.example.tictactoe.GameState> observer) {
             try {
                 observer.onCompleted();
             } catch (Exception e) {
@@ -345,9 +344,9 @@ public class TicTacToeServer {
         static class Player {
             final String name;
             String symbol;
-            final StreamObserver<GameState> observer;
+            final StreamObserver<com.example.tictactoe.GameState> observer;
 
-            Player(String name, String symbol, StreamObserver<GameState> observer) {
+            Player(String name, String symbol, StreamObserver<com.example.tictactoe.GameState> observer) {
                 this.name = name;
                 this.symbol = symbol;
                 this.observer = observer;

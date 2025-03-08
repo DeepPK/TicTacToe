@@ -12,7 +12,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <java.version>15</java.version>
+    <java.version>22</java.version>
     <grpc.version>1.59.0</grpc.version>
     <protobuf.version>3.24.4</protobuf.version>
     <maven.compiler.version>3.11.0</maven.compiler.version>
@@ -75,8 +75,10 @@
         <artifactId>protobuf-maven-plugin</artifactId>
         <version>${protobuf.plugin.version}</version>
         <configuration>
+          <!--suppress UnresolvedMavenProperty -->
           <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
           <pluginId>grpc-java</pluginId>
+          <!--suppress UnresolvedMavenProperty -->
           <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
           <protoSourceRoot>src/main/proto</protoSourceRoot>
         </configuration>
@@ -95,8 +97,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven.compiler.version}</version>
         <configuration>
-          <source>14</source>
-          <target>14</target>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
         </configuration>
       </plugin>
 
