@@ -1,5 +1,7 @@
 package com.example;
 
+import com.example.tictactoe.RoomList;
+import com.example.tictactoe.TicTacToeGrpc;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
@@ -61,7 +63,7 @@ public class TicTacToeServer {
         server.blockUntilShutdown();
     }
 
-    static class TicTacToeService extends com.example.tictactoe.TicTacToeGrpc.TicTacToeImplBase {
+    static class TicTacToeService extends TicTacToeGrpc.TicTacToeImplBase {
         private final RoomManager roomManager;
 
         public TicTacToeService(RoomManager roomManager) {
@@ -136,7 +138,7 @@ public class TicTacToeServer {
         }
 
         public com.example.tictactoe.RoomList getRoomList() {
-            com.example.tictactoe.RoomList.Builder builder = com.example.tictactoe.RoomList.newBuilder();
+            RoomList.Builder builder = com.example.tictactoe.RoomList.newBuilder();
             rooms.forEach((id, room) -> {
                 if (room.getStatus().equals("WAITING") && room.getPlayersCount() == 1) {
                     builder.addRooms(com.example.tictactoe.RoomInfo.newBuilder()
@@ -192,14 +194,14 @@ public class TicTacToeServer {
         }
 
         public synchronized void addPlayer(String name, StreamObserver<com.example.tictactoe.GameState> observer) {
-            if (players.size() >= 2 || !status.equals("WAITING")) {
-                observer.onError(Status.FAILED_PRECONDITION
-                        .withDescription("Комната заполнена или игра уже началась")
-                        .asRuntimeException());
-                return;
+            String symbol;
+            if (players.isEmpty())
+            {
+                symbol = "X";
+            } else {
+                System.out.println(players.getFirst().symbol);
+                symbol = Objects.equals(players.getFirst().symbol, "O") ? "X" : "O";
             }
-
-            String symbol = players.isEmpty() ? "X" : "O";
             Player newPlayer = new Player(name, symbol, observer);
             players.add(newPlayer);
 
@@ -320,8 +322,10 @@ public class TicTacToeServer {
 
         private void resetGame() {
             this.game = new Game(roomId);
+            System.out.println(players.getFirst().symbol);
+            players.getFirst().symbol = "X";
+            System.out.println(players.getFirst().symbol);
             this.status = "WAITING";
-            players.forEach(p -> p.symbol = players.indexOf(p) == 0 ? "X" : "O");
             notifyPlayers();
         }
 

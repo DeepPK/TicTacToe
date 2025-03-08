@@ -44,8 +44,7 @@ message GameState {
   string current_player = 3;
   string status = 4;
   string player_symbol = 5;
-  bool connection_alive = 6;
-  int32 players_count = 7;
+  int32 players_count = 6;
 }
 
 message Move {

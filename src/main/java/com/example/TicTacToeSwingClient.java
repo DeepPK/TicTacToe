@@ -3,8 +3,6 @@ package com.example;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import javax.swing.*;
 import java.awt.*;
 import java.util.Arrays;
@@ -33,14 +31,6 @@ public class TicTacToeSwingClient extends JFrame {
 
         public RoomInfoWrapper(com.example.tictactoe.RoomInfo info) {
             this.info = info;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s (%d/2) - %s",
-                    info.getRoomName(),
-                    info.getPlayersCount(),
-                    info.getStatus());
         }
 
         public String getRoomId() {
@@ -307,7 +297,13 @@ public class TicTacToeSwingClient extends JFrame {
             refreshRooms();
         }
     }
-
+    private void updateSymbol(com.example.tictactoe.GameState state) {
+        playerSymbol = state.getPlayerSymbol();
+        playerSymbolLabel.setText("Ваш символ: " + playerSymbol);
+        playerSymbolLabel.setForeground(
+                playerSymbol.equals("X") ? new Color(0, 100, 255) : new Color(255, 50, 50)
+        );
+    }
     private class GameStateObserver implements StreamObserver<com.example.tictactoe.GameState> {
         @Override
         public void onNext(com.example.tictactoe.GameState state) {
@@ -321,16 +317,8 @@ public class TicTacToeSwingClient extends JFrame {
         private void handleStatusUpdate(com.example.tictactoe.GameState state) {
             String status = state.getStatus();
 
-            // Обновление символа игрока
-            if (playerSymbol == null && !state.getPlayerSymbol().isEmpty()) {
-                playerSymbol = state.getPlayerSymbol();
-                playerSymbolLabel.setText("Ваш символ: " + playerSymbol);
-                playerSymbolLabel.setForeground(
-                        playerSymbol.equals("X") ? new Color(0, 100, 255) : new Color(255, 50, 50)
-                );
-            }
+            updateSymbol(state);
 
-            // Обработка специальных статусов
             if (status.contains("Победил") || status.equals("Ничья!")) {
                 JOptionPane.showMessageDialog(
                         TicTacToeSwingClient.this,
@@ -346,6 +334,10 @@ public class TicTacToeSwingClient extends JFrame {
                         JOptionPane.YES_NO_OPTION
                 );
                 if (choice == JOptionPane.YES_OPTION) leaveGame();
+                else if (choice == JOptionPane.NO_OPTION){
+                    resetGameUI();
+                    updateSymbol(state);
+                }
             }
 
             statusLabel.setText(status);
