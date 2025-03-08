@@ -6,8 +6,6 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -15,7 +13,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TicTacToeServer {
-    private static final Logger logger = LoggerFactory.getLogger(TicTacToeServer.class);
     private final int port;
     private final Server server;
     private final RoomManager roomManager = new RoomManager();
@@ -30,10 +27,8 @@ public class TicTacToeServer {
 
     public void start() throws IOException {
         server.start();
-        logger.info("Server started on port {}", port);
         scheduler.scheduleAtFixedRate(this::cleanupRooms, 1, 1, TimeUnit.MINUTES);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutting down server...");
             try {
                 server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
@@ -46,7 +41,6 @@ public class TicTacToeServer {
         roomManager.rooms.forEach((id, room) -> {
             if (room.shouldBeRemoved()) {
                 roomManager.removeRoom(id);
-                logger.info("Cleaned up room: {}", id);
             }
         });
     }
@@ -212,12 +206,7 @@ public class TicTacToeServer {
                     .setPlayerSymbol(symbol)
                     .addAllBoard(getCurrentBoard())
                     .build();
-
-            try {
-                observer.onNext(initialState);
-            } catch (Exception e) {
-                logger.error("Ошибка отправки состояния", e);
-            }
+            observer.onNext(initialState);
 
             if (players.size() == 2) {
                 startGame();
@@ -280,12 +269,7 @@ public class TicTacToeServer {
                         .setPlayersCount(players.size())
                         .setPlayerSymbol(p.symbol)
                         .build();
-
-                try {
-                    p.observer.onNext(state);
-                } catch (Exception e) {
-                    logger.error("Ошибка отправки состояния игроку {}", p.name, e);
-                }
+                p.observer.onNext(state);
             });
         }
 
@@ -308,11 +292,7 @@ public class TicTacToeServer {
         }
 
         private void safelyCloseObserver(StreamObserver<com.example.tictactoe.GameState> observer) {
-            try {
-                observer.onCompleted();
-            } catch (Exception e) {
-                logger.warn("Ошибка закрытия соединения", e);
-            }
+            observer.onCompleted();
         }
 
         private void resetRoom() {
