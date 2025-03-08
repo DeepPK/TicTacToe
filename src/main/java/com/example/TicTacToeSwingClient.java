@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TicTacToeSwingClient extends JFrame {
-    private static final Logger logger = LoggerFactory.getLogger(TicTacToeSwingClient.class);
     private ManagedChannel channel;
     private com.example.tictactoe.TicTacToeGrpc.TicTacToeBlockingStub blockingStub;
     private com.example.tictactoe.TicTacToeGrpc.TicTacToeStub asyncStub;
@@ -361,10 +360,6 @@ public class TicTacToeSwingClient extends JFrame {
         }
 
         private void updateBoard(List<String> board) {
-            if (board.size() != 9) {
-                logger.error("Некорректный размер поля: {}", board.size());
-                return;
-            }
 
             for (int i = 0; i < 9; i++) {
                 int row = i / 3;

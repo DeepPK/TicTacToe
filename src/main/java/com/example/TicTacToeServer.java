@@ -355,13 +355,11 @@ public class TicTacToeServer {
     }
 
     static class Game {
-        private final String gameId;
         private final String[] board = new String[9];
         private String currentPlayer = "X";
         private String status = "IN_PROGRESS";
 
         public Game(String gameId) {
-            this.gameId = gameId;
             Arrays.fill(board, "");
         }
 

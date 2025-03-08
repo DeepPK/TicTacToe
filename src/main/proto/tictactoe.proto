@@ -46,7 +46,6 @@ message GameState {
   string player_symbol = 5;
   bool connection_alive = 6;
   int32 players_count = 7;
-  int32 room_version = 8;
 }
 
 message Move {
