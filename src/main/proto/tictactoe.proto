@@ -5,11 +5,12 @@ option java_package = "com.example.tictactoe";
 option java_outer_classname = "TicTacToeProto";
 
 service TicTacToe {
-  rpc CreateRoom(CreateRoomRequest) returns (RoomResponse);
-  rpc ListRooms(Empty) returns (RoomList);
-  rpc JoinRoom(JoinRoomRequest) returns (stream GameState);
-  rpc MakeMove(Move) returns (MoveResult);
-  rpc LeaveRoom(LeaveRequest) returns (Empty);
+  rpc CreateRoom(CreateRoomRequest) returns (RoomResponse);// Создание комнаты. Возвращает ID комнаты или ошибку
+  rpc ListRooms(Empty) returns (RoomList);// Получение списка доступных комнат
+  rpc JoinRoom(JoinRoomRequest) returns (stream GameState);// Присоединение к комнате. Сервер отправляет поток обновлений состояния
+  rpc MakeMove(Move) returns (MoveResult);// Отправка хода игрока. Возвращает результат выполнения
+  rpc LeaveRoom(LeaveRequest) returns (Empty);// Выход игрока из комнаты
+
 }
 
 message CreateRoomRequest {
@@ -23,7 +24,7 @@ message JoinRoomRequest {
 
 message RoomResponse {
   bool success = 1;
-  string message = 2;
+  string message = 2; //Об ошибке если что-то сломается
   string room_id = 3;
 }
 
@@ -35,14 +36,14 @@ message RoomInfo {
   string room_id = 1;
   string room_name = 2;
   int32 players_count = 3;
-  string status = 4;
+  string status = 4;      // Статус: "WAITING", "IN_PROGRESS", "FINISHED"
 }
 
 message GameState {
   string game_id = 1;
-  repeated string board = 2;
-  string current_player = 3;
-  string status = 4;
+  repeated string board = 2;  //Поле 3x3
+  string current_player = 3;  //Чей сейчас ход
+  string status = 4;          //Ход, победа, ничья, соперник покинул и так далее
   string player_symbol = 5;
   int32 players_count = 6;
 }
@@ -63,4 +64,4 @@ message LeaveRequest {
   string player_name = 2;
 }
 
-message Empty {}
+message Empty {}   // Пустой запрос/ответ

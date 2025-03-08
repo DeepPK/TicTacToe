@@ -1,33 +1,31 @@
 package com.example;
 
-import com.example.tictactoe.RoomList;
+import com.example.tictactoe.RoomList; //Классы из протофайла
 import com.example.tictactoe.TicTacToeGrpc;
-import io.grpc.Server;
+import io.grpc.Server; //Стартует сервер и все взаимодействия реализует
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
-import java.io.IOException;
-import java.util.*;
+import java.io.IOException; //Для отладки
+import java.util.*; //По мелочам (мне IDE сказала это добавить)
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TicTacToeServer {
     private final int port;
     private final Server server;
-    private final RoomManager roomManager = new RoomManager();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final RoomManager roomManager = new RoomManager(); //отвечает за список комнат
 
     public TicTacToeServer(int port) {
-        this.port = port;
+        this.port = port;                                                //Иницилизируем сервер
         this.server = ServerBuilder.forPort(port)
                 .addService(new TicTacToeService(roomManager))
                 .build();
     }
 
     public void start() throws IOException {
-        server.start();
-        scheduler.scheduleAtFixedRate(this::cleanupRooms, 1, 1, TimeUnit.MINUTES);
+        server.start(); //Стартуем и отключаем
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
@@ -37,21 +35,13 @@ public class TicTacToeServer {
         }));
     }
 
-    private void cleanupRooms() {
-        roomManager.rooms.forEach((id, room) -> {
-            if (room.shouldBeRemoved()) {
-                roomManager.removeRoom(id);
-            }
-        });
-    }
-
     public void blockUntilShutdown() throws InterruptedException {
         if (server != null) {
-            server.awaitTermination();
+            server.awaitTermination(); //Защищает от дропа
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {//Входная функция
         TicTacToeServer server = new TicTacToeServer(50051);
         server.start();
         server.blockUntilShutdown();
@@ -60,11 +50,11 @@ public class TicTacToeServer {
     static class TicTacToeService extends TicTacToeGrpc.TicTacToeImplBase {
         private final RoomManager roomManager;
 
-        public TicTacToeService(RoomManager roomManager) {
+        public TicTacToeService(RoomManager roomManager) { //Инициализируем манагера
             this.roomManager = roomManager;
         }
 
-        @Override
+        @Override //Когда к нам пришлёт клиент запрос на создание комнаты, то добавляем её.
         public void createRoom(com.example.tictactoe.CreateRoomRequest request, StreamObserver<com.example.tictactoe.RoomResponse> responseObserver) {
             try {
                 com.example.tictactoe.RoomResponse response = roomManager.createRoom(request.getRoomName());
@@ -75,13 +65,13 @@ public class TicTacToeServer {
             }
         }
 
-        @Override
+        @Override  //Возвращаем список комнат
         public void listRooms(com.example.tictactoe.Empty request, StreamObserver<com.example.tictactoe.RoomList> responseObserver) {
             responseObserver.onNext(roomManager.getRoomList());
             responseObserver.onCompleted();
         }
 
-        @Override
+        @Override //Манагер добовляет в комнату нового игрока, тригерится клиентом
         public void joinRoom(com.example.tictactoe.JoinRoomRequest request, StreamObserver<com.example.tictactoe.GameState> responseObserver) {
             try {
                 roomManager.joinRoom(
@@ -93,7 +83,7 @@ public class TicTacToeServer {
             }
         }
 
-        @Override
+        @Override  //Фиксируем ход игрока у себя и запоминаем
         public void makeMove(com.example.tictactoe.Move request, StreamObserver<com.example.tictactoe.MoveResult> responseObserver) {
             try {
                 boolean success = roomManager.handleMove(
@@ -110,7 +100,7 @@ public class TicTacToeServer {
             }
         }
 
-        @Override
+        @Override //Удаляем игрока из комнаты, если клиент тригернёт выход
         public void leaveRoom(com.example.tictactoe.LeaveRequest request, StreamObserver<com.example.tictactoe.Empty> responseObserver) {
             roomManager.handlePlayerExit(request.getRoomId(), request.getPlayerName());
             responseObserver.onNext(com.example.tictactoe.Empty.getDefaultInstance());
@@ -118,12 +108,12 @@ public class TicTacToeServer {
         }
     }
 
-    static class RoomManager {
+    static class RoomManager { //Манагер (смешное слово, Manager)
         private final ConcurrentMap<String, Room> rooms = new ConcurrentHashMap<>();
         private final AtomicInteger roomCounter = new AtomicInteger();
 
         public com.example.tictactoe.RoomResponse createRoom(String roomName) {
-            String roomId = "room-" + roomCounter.incrementAndGet();
+            String roomId = "room-" + roomCounter.incrementAndGet(); // уже тригерится здесь, ставим новую комнату в мапу
             rooms.put(roomId, new Room(roomId, roomName));
             return com.example.tictactoe.RoomResponse.newBuilder()
                     .setSuccess(true)
@@ -131,7 +121,7 @@ public class TicTacToeServer {
                     .build();
         }
 
-        public com.example.tictactoe.RoomList getRoomList() {
+        public com.example.tictactoe.RoomList getRoomList() {  //Все игры, что не пустые и полные мы кидаем в список клиенту
             RoomList.Builder builder = com.example.tictactoe.RoomList.newBuilder();
             rooms.forEach((id, room) -> {
                 if (room.getStatus().equals("WAITING") && room.getPlayersCount() == 1) {
@@ -146,7 +136,7 @@ public class TicTacToeServer {
             return builder.build();
         }
 
-        public void joinRoom(String roomId, String playerName, StreamObserver<com.example.tictactoe.GameState> observer) {
+        public void joinRoom(String roomId, String playerName, StreamObserver<com.example.tictactoe.GameState> observer) {//Если комната не удалена, закидываем в неё игрока
             Room room = rooms.get(roomId);
             if (room == null) {
                 observer.onError(Status.NOT_FOUND.withDescription("Комната не найдена").asRuntimeException());
@@ -155,49 +145,45 @@ public class TicTacToeServer {
             room.addPlayer(playerName, observer);
         }
 
-        public boolean handleMove(String gameId, String playerName, int position) {
+        public boolean handleMove(String gameId, String playerName, int position) { //От метода клинта
             Room room = rooms.get(gameId);
-            return room != null && room.makeMove(playerName, position);
+            return room != null && room.makeMove(playerName, position); //Ставим в  поле значение символа и возвращаем тру, если успешно
         }
 
-        public void handlePlayerExit(String roomId, String playerName) {
+        public void handlePlayerExit(String roomId, String playerName) {  //Продолжение метода клиента
             Room room = rooms.get(roomId);
             if (room != null) {
-                room.removePlayer(playerName);
+                room.removePlayer(playerName);   //Если комната есть удаляем игрока, если игроков нет или игра закончилась, удаляем
                 if (room.shouldBeRemoved()) {
                     rooms.remove(roomId);
                 }
             }
-        }
-
-        public void removeRoom(String roomId) {
-            rooms.remove(roomId);
         }
     }
 
     static class Room {
         private final String roomId;
         private final String roomName;
-        private final List<Player> players = new CopyOnWriteArrayList<>();
-        private Game game;
-        private String status = "WAITING";
+        private final List<Player> players = new CopyOnWriteArrayList<>();  //Игроки комнаты
+        private Game game;                      //Ситуация в игре
+        private String status = "WAITING";     //Состояние игры
 
-        public Room(String roomId, String roomName) {
+        public Room(String roomId, String roomName) { //Инициализатор
             this.roomId = roomId;
             this.roomName = roomName;
         }
 
         public synchronized void addPlayer(String name, StreamObserver<com.example.tictactoe.GameState> observer) {
             String symbol;
-            if (players.isEmpty())
+            if (players.isEmpty()) //Если игрок только зашёл, то он всегда X
             {
                 symbol = "X";
-            } else {
+            } else {                                                //Если игрок второй, то нужно дать ему символ противоположный игроку в комнате
                 System.out.println(players.getFirst().symbol);
                 symbol = Objects.equals(players.getFirst().symbol, "O") ? "X" : "O";
             }
             Player newPlayer = new Player(name, symbol, observer);
-            players.add(newPlayer);
+            players.add(newPlayer); //Добавляем и грока и отправляем клиенту инфу о состоянии комнаты
 
             com.example.tictactoe.GameState initialState = com.example.tictactoe.GameState.newBuilder()
                     .setGameId(roomId)
@@ -208,16 +194,16 @@ public class TicTacToeServer {
                     .build();
             observer.onNext(initialState);
 
-            if (players.size() == 2) {
+            if (players.size() == 2) { //Если комната полна, начинаем игру
                 startGame();
             }
         }
 
-        private List<String> getCurrentBoard() {
+        private List<String> getCurrentBoard() { //Проверяем поле
             return game != null ? Arrays.asList(game.getBoard()) : Collections.nCopies(9, "");
         }
 
-        private String getStatusMessage() {
+        private String getStatusMessage() { //В зависимости от статуса могут потребоваться разные сообщения для клиентов
             return switch (status) {
                 case "WAITING" -> "Ожидание игроков (" + players.size() + "/2)";
                 case "IN_PROGRESS" -> "Сейчас ходит: " + game.getCurrentPlayer();
@@ -229,17 +215,17 @@ public class TicTacToeServer {
             };
         }
 
-        private void startGame() {
+        private void startGame() {  //Запускает новую игру и обновляет у клиентов
             this.game = new Game(roomId);
             this.status = "IN_PROGRESS";
             notifyPlayers();
         }
 
-        public boolean makeMove(String playerName, int position) {
+        public boolean makeMove(String playerName, int position) { //Фиксирует ход у себя
             String symbol = getPlayerSymbol(playerName);
             boolean success = symbol != null && game != null && game.makeMove(symbol, position);
             if (success) {
-                notifyPlayers();
+                notifyPlayers();  //Если ход успешен, тообновляем пользователей и проверяем, что игра всё ещё идёт
                 if (!game.getStatus().equals("IN_PROGRESS")) {
                     status = game.getStatus();
                     notifyPlayers();
@@ -248,7 +234,7 @@ public class TicTacToeServer {
             return success;
         }
 
-        private String getPlayerSymbol(String playerName) {
+        private String getPlayerSymbol(String playerName) {      //Узнать символ игрока
             return players.stream()
                     .filter(p -> p.name.equals(playerName))
                     .findFirst()
@@ -256,7 +242,7 @@ public class TicTacToeServer {
                     .orElse(null);
         }
 
-        private void notifyPlayers() {
+        private void notifyPlayers() {         //отправляем игрокам инфу о ситуации на поле и статус игры
             String statusMessage = getStatusMessage();
             List<String> board = getCurrentBoard();
 
@@ -273,7 +259,7 @@ public class TicTacToeServer {
             });
         }
 
-        public synchronized void removePlayer(String playerName) {
+        public synchronized void removePlayer(String playerName) {   //Если такой игрок есть, то удаляем
             players.removeIf(p -> {
                 if (p.name.equals(playerName)) {
                     safelyCloseObserver(p.observer);
@@ -282,7 +268,7 @@ public class TicTacToeServer {
                 return false;
             });
 
-            if (players.isEmpty()) {
+            if (players.isEmpty()) {  //Если игроков не осталось, удаляем комнату. Иначе оставшемуся игроку обновляем комнату и ресетим игру
                 resetRoom();
             } else if (status.equals("IN_PROGRESS")) {
                 status = "ABANDONED";
@@ -291,22 +277,20 @@ public class TicTacToeServer {
             }
         }
 
-        private void safelyCloseObserver(StreamObserver<com.example.tictactoe.GameState> observer) {
+        private void safelyCloseObserver(StreamObserver<com.example.tictactoe.GameState> observer) {    //Безопасно перекидываеи клиента на экран лобби
             observer.onCompleted();
         }
 
-        private void resetRoom() {
+        private void resetRoom() { //нулл игра и она завкрыта
             this.game = null;
             this.status = "CLOSED";
         }
 
-        private void resetGame() {
+        private void resetGame() {          //Пересоздаём игру
             this.game = new Game(roomId);
-            System.out.println(players.getFirst().symbol);
-            players.getFirst().symbol = "X";
-            System.out.println(players.getFirst().symbol);
+            players.getFirst().symbol = "X";   //Оставшийся игрок всегда будет крестиком
             this.status = "WAITING";
-            notifyPlayers();
+            notifyPlayers();        //Обновим ему инфу
         }
 
         public String getStatus() {
@@ -321,14 +305,14 @@ public class TicTacToeServer {
             return roomName;
         }
 
-        public boolean shouldBeRemoved() {
+        public boolean shouldBeRemoved() {    //Проверяет комнату на удаление
             return status.equals("CLOSED") || players.isEmpty();
         }
 
-        static class Player {
+        static class Player {       //Инфа о игроке
             final String name;
             String symbol;
-            final StreamObserver<com.example.tictactoe.GameState> observer;
+            final StreamObserver<com.example.tictactoe.GameState> observer; //Передаёт инфу о игре через этот поток
 
             Player(String name, String symbol, StreamObserver<com.example.tictactoe.GameState> observer) {
                 this.name = name;
@@ -339,15 +323,17 @@ public class TicTacToeServer {
     }
 
     static class Game {
+        private String gameID;       //Для вывода в список
         private final String[] board = new String[9];
-        private String currentPlayer = "X";
-        private String status = "IN_PROGRESS";
+        private String currentPlayer = "X";        //Первый всегда крестик
+        private String status = "IN_PROGRESS";     //Игра начинается всегда в процессе
 
         public Game(String gameId) {
+            this.gameID = gameId;
             Arrays.fill(board, "");
         }
 
-        public synchronized boolean makeMove(String symbol, int position) {
+        public synchronized boolean makeMove(String symbol, int position) {   //Добавляем ход игрока на поле
             if (!status.equals("IN_PROGRESS")
                     || position < 0 || position >= 9
                     || !board[position].isEmpty()
@@ -356,25 +342,24 @@ public class TicTacToeServer {
             }
 
             board[position] = symbol;
-            checkGameStatus();
+            checkGameStatus();  //Проверка на победу
 
-            if (status.equals("IN_PROGRESS")) {
+            if (status.equals("IN_PROGRESS")) {  //Меняем ход игрока
                 currentPlayer = currentPlayer.equals("X") ? "O" : "X";
             }
-
             return true;
         }
 
-        private void checkGameStatus() {
+        private void checkGameStatus() {        //бъявляем комнату победу, ничья, или продолжаем
             String winner = checkWinner();
-            if (winner != null) {
+            if (winner != null) {    //Если всё такие есть результат
                 status = winner + "_WON";
-            } else if (isBoardFull()) {
+            } else if (isBoardFull()) { //Если ничья
                 status = "DRAW";
             }
         }
 
-        private String checkWinner() {
+        private String checkWinner() {  //Проверяет комбы победы
             int[][] winCombinations = {
                     {0, 1, 2}, {3, 4, 5}, {6, 7, 8},
                     {0, 3, 6}, {1, 4, 7}, {2, 5, 8},
@@ -390,10 +375,10 @@ public class TicTacToeServer {
                     return a;
                 }
             }
-            return null;
+            return null;   //Если не нашлась комба, продолжаем играть
         }
 
-        private boolean isBoardFull() {
+        private boolean isBoardFull() {      //Проверка на ничью
             return Arrays.stream(board).noneMatch(String::isEmpty);
         }
 
